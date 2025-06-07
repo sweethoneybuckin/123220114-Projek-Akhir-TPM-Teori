@@ -25,13 +25,6 @@ class _FavoriteVinylPageState extends State<FavoriteVinylPage>
   bool _isLoading = false;
   String? _errorMessage;
   
-  // View mode
-  bool _isGridView = false;
-  
-  // Sort options
-  String _currentSortBy = 'title'; // title, artist, year
-  bool _sortAscending = true;
-  
   // Animation controllers
   late AnimationController _animationController;
   late AnimationController _fabAnimationController;
@@ -106,7 +99,6 @@ class _FavoriteVinylPageState extends State<FavoriteVinylPage>
         _filteredVinyls = List.from(favorites);
         _isLoading = false;
       });
-      _applySorting();
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to load favorites: $e';
@@ -123,38 +115,6 @@ class _FavoriteVinylPageState extends State<FavoriteVinylPage>
       } else {
         _filteredVinyls = _favoriteService.searchFavorites(query);
       }
-    });
-    _applySorting();
-  }
-
-  void _applySorting() {
-    _favoriteService.sortFavorites(_currentSortBy, ascending: _sortAscending);
-    setState(() {
-      if (_searchController.text.trim().isEmpty) {
-        _filteredVinyls = List.from(_favoriteVinyls);
-      } else {
-        _performSearch();
-      }
-    });
-  }
-
-  void _toggleSortOrder() {
-    setState(() {
-      _sortAscending = !_sortAscending;
-    });
-    _applySorting();
-  }
-
-  void _changeSortBy(String sortBy) {
-    setState(() {
-      _currentSortBy = sortBy;
-    });
-    _applySorting();
-  }
-
-  void _toggleViewMode() {
-    setState(() {
-      _isGridView = !_isGridView;
     });
   }
 
@@ -275,36 +235,6 @@ class _FavoriteVinylPageState extends State<FavoriteVinylPage>
                   ],
                 ),
               ),
-              // View mode toggle
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.view_list,
-                        color: !_isGridView ? Colors.white : Colors.white54,
-                      ),
-                      onPressed: () {
-                        if (_isGridView) _toggleViewMode();
-                      },
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.grid_view,
-                        color: _isGridView ? Colors.white : Colors.white54,
-                      ),
-                      onPressed: () {
-                        if (!_isGridView) _toggleViewMode();
-                      },
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -361,69 +291,6 @@ class _FavoriteVinylPageState extends State<FavoriteVinylPage>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSortBar() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Text(
-            'Sort by:',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[700],
-            ),
-          ),
-          const SizedBox(width: 12),
-          
-          // Sort options
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildSortChip('Title', 'title'),
-                  const SizedBox(width: 8),
-                  _buildSortChip('Artist', 'artist'),
-                  const SizedBox(width: 8),
-                  _buildSortChip('Year', 'year'),
-                ],
-              ),
-            ),
-          ),
-          
-          // Sort direction toggle
-          IconButton(
-            icon: Icon(
-              _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            onPressed: _toggleSortOrder,
-            tooltip: _sortAscending ? 'Ascending' : 'Descending',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSortChip(String label, String value) {
-    final isSelected = _currentSortBy == value;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) => _changeSortBy(value),
-      selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-      checkmarkColor: Theme.of(context).colorScheme.primary,
-      labelStyle: TextStyle(
-        color: isSelected 
-          ? Theme.of(context).colorScheme.primary 
-          : Colors.grey[700],
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        fontSize: 12,
       ),
     );
   }
@@ -537,7 +404,7 @@ class _FavoriteVinylPageState extends State<FavoriteVinylPage>
 
     return RefreshIndicator(
       onRefresh: _loadFavorites,
-      child: _isGridView ? _buildGridView() : _buildListView(),
+      child: _buildListView(),
     );
   }
 
@@ -549,24 +416,6 @@ class _FavoriteVinylPageState extends State<FavoriteVinylPage>
       itemBuilder: (context, index) {
         final vinyl = _filteredVinyls[index];
         return _buildVinylListCard(vinyl, index);
-      },
-    );
-  }
-
-  Widget _buildGridView() {
-    return GridView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.75,
-      ),
-      itemCount: _filteredVinyls.length,
-      itemBuilder: (context, index) {
-        final vinyl = _filteredVinyls[index];
-        return _buildVinylGridCard(vinyl, index);
       },
     );
   }
@@ -717,126 +566,6 @@ class _FavoriteVinylPageState extends State<FavoriteVinylPage>
     );
   }
 
-  Widget _buildVinylGridCard(VinylRelease vinyl, int index) {
-    return Card(
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => VinylDetailPage(release: vinyl),
-            ),
-          ).then((_) => _loadFavorites()); // Refresh when returning
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Album Art
-            Expanded(
-              flex: 3,
-              child: Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                      color: Colors.grey[200],
-                      image: vinyl.thumb != null
-                        ? DecorationImage(
-                            image: NetworkImage(vinyl.thumb!),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                    ),
-                    child: vinyl.thumb == null
-                      ? Center(
-                          child: Icon(
-                            Icons.album,
-                            size: 40,
-                            color: Colors.grey[400],
-                          ),
-                        )
-                      : null,
-                  ),
-                  // Remove button overlay
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.favorite,
-                          color: Colors.red,
-                          size: 20,
-                        ),
-                        onPressed: () => _removeFromFavorites(vinyl),
-                        constraints: const BoxConstraints(
-                          minWidth: 32,
-                          minHeight: 32,
-                        ),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Info
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    Text(
-                      vinyl.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    
-                    // Artist
-                    Text(
-                      vinyl.displayArtists,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 11,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    
-                    if (vinyl.year != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${vinyl.year}',
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -849,7 +578,6 @@ class _FavoriteVinylPageState extends State<FavoriteVinylPage>
             child: Column(
               children: [
                 _buildHeader(),
-                _buildSortBar(),
                 Expanded(child: _buildContent()),
               ],
             ),

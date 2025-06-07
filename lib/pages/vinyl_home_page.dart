@@ -1,4 +1,4 @@
-// lib/pages/vinyl_home_page.dart (Updated with Favorites navigation)
+// lib/pages/vinyl_home_page.dart (Updated without filters and fixed popup)
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -41,10 +41,6 @@ class _VinylHomePageState extends State<VinylHomePage>
   int _currentPage = 1;
   int _totalPages = 1;
   
-  // Filter state
-  String _selectedFilter = 'all';
-  bool _showFilters = false;
-  
   @override
   void initState() {
     super.initState();
@@ -79,20 +75,8 @@ class _VinylHomePageState extends State<VinylHomePage>
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
     
-    switch (_selectedFilter) {
-      case 'all':
-        _presenter.searchReleases(query);
-        break;
-      case 'vinyl':
-        _presenter.searchVinylOnly(query);
-        break;
-      case 'artist':
-        _presenter.searchByArtist(query);
-        break;
-      case 'genre':
-        _presenter.searchByGenre(query);
-        break;
-    }
+    // Simple search without filters
+    _presenter.searchReleases(query);
   }
 
   Future<void> _logout() async {
@@ -133,171 +117,127 @@ class _VinylHomePageState extends State<VinylHomePage>
     
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            
-            // User info
-            if (user != null) ...[
-              // Profile photo with improved display
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 3,
+      builder: (context) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        child: SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                child: CircleAvatar(
-                  radius: 37,
-                  backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                  backgroundImage: user.profilePhoto != null 
-                    ? FileImage(File(user.profilePhoto!))
-                    : null,
-                  child: user.profilePhoto == null
-                    ? Text(
-                        user.username[0].toUpperCase(),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                user.username,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                user.email,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-            
-            // Menu items
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: const Text('Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const ProfilePage()),
-                ).then((_) {
-                  // Refresh user data when returning from profile page
-                  setState(() {});
-                });
-              },
-            ),
-
-            // Favorites menu item - NEW!
-            ListTile(
-              leading: Stack(
-                children: [
-                  const Icon(Icons.favorite_outline),
-                  if (_favoritesCount > 0)
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(1),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 12,
-                          minHeight: 12,
-                        ),
-                        child: Text(
-                          '$_favoritesCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
+                
+                // User info
+                if (user != null) ...[
+                  // Profile photo with improved display
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 3,
                       ),
                     ),
+                    child: CircleAvatar(
+                      radius: 32,
+                      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      backgroundImage: user.profilePhoto != null 
+                        ? FileImage(File(user.profilePhoto!))
+                        : null,
+                      child: user.profilePhoto == null
+                        ? Text(
+                            user.username[0].toUpperCase(),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    user.username,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    user.email,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                 ],
-              ),
-              title: Text('My Favorites ($_favoritesCount)'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const FavoriteVinylPage()),
-                ).then((_) {
-                  // Refresh favorites count when returning
-                  _loadFavoritesCount();
-                });
-              },
+                
+                // Menu items
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+                  leading: const Icon(Icons.person_outline),
+                  title: const Text('Profile'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const ProfilePage()),
+                    ).then((_) {
+                      // Refresh user data when returning from profile page
+                      setState(() {});
+                    });
+                  },
+                ),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text('About'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    showAboutDialog(
+                      context: context,
+                      applicationName: 'Vinyl Store',
+                      applicationVersion: '1.0.0',
+                      applicationIcon: const Icon(Icons.album),
+                      children: [
+                        const Text('A beautiful vinyl record store app with authentication, profile management, event scheduling, and shake-to-favorite functionality.'),
+                      ],
+                    );
+                  },
+                ),
+                const Divider(height: 20),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+                  leading: const Icon(Icons.logout, color: Colors.red),
+                  title: const Text('Logout', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _logout();
+                  },
+                ),
+                
+                const SizedBox(height: 16),
+              ],
             ),
-
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: const Text('Settings'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Implement settings page
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Settings page coming soon!')),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('About'),
-              onTap: () {
-                Navigator.pop(context);
-                showAboutDialog(
-                  context: context,
-                  applicationName: 'Vinyl Store',
-                  applicationVersion: '1.0.0',
-                  applicationIcon: const Icon(Icons.album),
-                  children: [
-                    const Text('A beautiful vinyl record store app with authentication, profile management, event scheduling, and shake-to-favorite functionality.'),
-                  ],
-                );
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                _logout();
-              },
-            ),
-            
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
       ),
     );
@@ -360,7 +300,7 @@ class _VinylHomePageState extends State<VinylHomePage>
                     ),
                   ),
 
-                  // Favorites icon with badge - NEW!
+                  // Favorites icon with badge
                   Container(
                     margin: const EdgeInsets.only(right: 12),
                     child: Stack(
@@ -443,7 +383,7 @@ class _VinylHomePageState extends State<VinylHomePage>
               ),
               const SizedBox(height: 16),
               
-              // Search Bar
+              // Search Bar (without filter icon)
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -475,22 +415,6 @@ class _VinylHomePageState extends State<VinylHomePage>
                     ),
                     IconButton(
                       icon: Icon(
-                        _showFilters ? Icons.filter_list_off : Icons.filter_list,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _showFilters = !_showFilters;
-                        });
-                      },
-                    ),
-                    Container(
-                      height: 30,
-                      width: 1,
-                      color: Colors.grey[300],
-                    ),
-                    IconButton(
-                      icon: Icon(
                         Icons.search,
                         color: Theme.of(context).colorScheme.primary,
                       ),
@@ -500,7 +424,7 @@ class _VinylHomePageState extends State<VinylHomePage>
                 ),
               ),
               
-              // Shake instruction hint - NEW!
+              // Shake instruction hint
               if (_releases.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -535,67 +459,11 @@ class _VinylHomePageState extends State<VinylHomePage>
           ),
         ),
         
-        // Filter Options
-        if (_showFilters)
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Text(
-                  'Search in:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[700],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildFilterChip('All', 'all'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Vinyl Only', 'vinyl'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Artists', 'artist'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Genres', 'genre'),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        
         // Main Content Area
         Expanded(
           child: _buildContent(),
         ),
       ],
-    );
-  }
-  
-  Widget _buildFilterChip(String label, String value) {
-    final isSelected = _selectedFilter == value;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        setState(() {
-          _selectedFilter = value;
-        });
-      },
-      selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-      checkmarkColor: Theme.of(context).colorScheme.primary,
-      labelStyle: TextStyle(
-        color: isSelected 
-          ? Theme.of(context).colorScheme.primary 
-          : Colors.grey[700],
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      ),
     );
   }
   
@@ -902,7 +770,7 @@ class _VinylHomePageState extends State<VinylHomePage>
           children: [
             _buildVinylPage(),
             const EventsPage(),
-            const FavoriteVinylPage(), // Add favorites as a tab - NEW!
+            const FavoriteVinylPage(),
           ],
         ),
       ),

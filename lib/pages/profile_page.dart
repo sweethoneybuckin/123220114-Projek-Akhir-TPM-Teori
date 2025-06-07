@@ -235,58 +235,37 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
   Widget _buildProfilePhoto() {
     const double size = 120;
     
-    return Stack(
-      children: [
-        Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Theme.of(context).colorScheme.primary,
-              width: 4,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: CircleAvatar(
-            radius: size / 2 - 4,
-            backgroundColor: Colors.grey[200],
-            backgroundImage: _currentUser?.profilePhoto != null 
-              ? FileImage(File(_currentUser!.profilePhoto!))
-              : null,
-            child: _currentUser?.profilePhoto == null
-              ? Icon(
-                  Icons.person,
-                  size: size * 0.5,
-                  color: Colors.grey[600],
-                )
-              : null,
-          ),
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary,
+          width: 4,
         ),
-        Positioned(
-          bottom: 0,
-          right: 0,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.camera_alt, color: Colors.white),
-              iconSize: 20,
-              padding: const EdgeInsets.all(8),
-              onPressed: _pickAndSaveProfilePhoto,
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: CircleAvatar(
+        radius: size / 2 - 4,
+        backgroundColor: Colors.grey[200],
+        backgroundImage: _currentUser?.profilePhoto != null 
+          ? FileImage(File(_currentUser!.profilePhoto!))
+          : null,
+        child: _currentUser?.profilePhoto == null
+          ? Icon(
+              Icons.person,
+              size: size * 0.5,
+              color: Colors.grey[600],
+            )
+          : null,
+      ),
     );
   }
 
@@ -425,67 +404,6 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
                             ),
                           ),
                         ),
-
-                      const SizedBox(height: 16),
-
-                      // Action Buttons
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Account Actions',
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              
-                              // Notification Settings
-                              ListTile(
-                                leading: const Icon(Icons.notifications_outlined),
-                                title: const Text('Notification Settings'),
-                                subtitle: const Text('Manage event notifications'),
-                                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => const NotificationSettingsPage(),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const Divider(),
-                              
-                              ListTile(
-                                leading: const Icon(Icons.lock_outline),
-                                title: const Text('Change Password'),
-                                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                                onTap: () {
-                                  // TODO: Implement change password
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Change password feature coming soon!')),
-                                  );
-                                },
-                              ),
-                              const Divider(),
-                              ListTile(
-                                leading: const Icon(Icons.edit_outlined),
-                                title: const Text('Edit Profile'),
-                                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                                onTap: () {
-                                  // TODO: Implement edit profile
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Edit profile feature coming soon!')),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),

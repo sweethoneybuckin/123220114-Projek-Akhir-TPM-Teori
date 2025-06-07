@@ -159,23 +159,6 @@ class _CreateEventPageState extends State<CreateEventPage>
           _isLoadingLocation = false;
           _useCurrentLocation = true;
         });
-
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.location_on, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Current location set: $address')),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
       } else {
         throw Exception('Could not determine address from your location.');
       }
@@ -687,27 +670,16 @@ class _CreateEventPageState extends State<CreateEventPage>
                         ),
                       ] : null,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.edit_location_alt,
-                          size: 18,
+                    child: Center(
+                      child: Text(
+                        'Manual Entry',
+                        style: TextStyle(
+                          fontWeight: !_useCurrentLocation ? FontWeight.bold : FontWeight.normal,
                           color: !_useCurrentLocation 
                             ? Theme.of(context).colorScheme.primary 
                             : Colors.grey[600],
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Manual Entry',
-                          style: TextStyle(
-                            fontWeight: !_useCurrentLocation ? FontWeight.bold : FontWeight.normal,
-                            color: !_useCurrentLocation 
-                              ? Theme.of(context).colorScheme.primary 
-                              : Colors.grey[600],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -728,27 +700,16 @@ class _CreateEventPageState extends State<CreateEventPage>
                         ),
                       ] : null,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.my_location,
-                          size: 18,
+                    child: Center(
+                      child: Text(
+                        'Current Location',
+                        style: TextStyle(
+                          fontWeight: _useCurrentLocation ? FontWeight.bold : FontWeight.normal,
                           color: _useCurrentLocation 
                             ? Theme.of(context).colorScheme.primary 
                             : Colors.grey[600],
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Current Location',
-                          style: TextStyle(
-                            fontWeight: _useCurrentLocation ? FontWeight.bold : FontWeight.normal,
-                            color: _useCurrentLocation 
-                              ? Theme.of(context).colorScheme.primary 
-                              : Colors.grey[600],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -823,37 +784,6 @@ class _CreateEventPageState extends State<CreateEventPage>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _getCurrentLocation,
-                          icon: const Icon(Icons.refresh, size: 18),
-                          label: const Text('Update Location'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Theme.of(context).colorScheme.primary,
-                            side: BorderSide(color: Theme.of(context).colorScheme.primary),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _locationController.clear();
-                            _currentPosition = null;
-                          });
-                        },
-                        icon: const Icon(Icons.clear, size: 18),
-                        label: const Text('Clear'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
-                        ),
-                      ),
-                    ],
-                  ),
                 ] else ...[
                   ElevatedButton.icon(
                     onPressed: _getCurrentLocation,
@@ -904,34 +834,6 @@ class _CreateEventPageState extends State<CreateEventPage>
             maxLines: 2,
           ),
         ],
-        
-        // Location Tips
-        if (!_useCurrentLocation) ...[
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue[200]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.lightbulb_outline, color: Colors.blue[700], size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Tip: Include the full address, venue name, or landmark for better clarity',
-                    style: TextStyle(
-                      color: Colors.blue[700],
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -961,54 +863,6 @@ class _CreateEventPageState extends State<CreateEventPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
-                  Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.event_note,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 28,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Create New Event',
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Share your vinyl events with the community',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 20),
-
                   // Error Message
                   if (_errorMessage != null) ...[
                     Card(
@@ -1170,19 +1024,12 @@ class _CreateEventPageState extends State<CreateEventPage>
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.event_note, size: 20),
-                                SizedBox(width: 12),
-                                Text(
-                                  'Create Event',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                          : const Text(
+                              'Create Event',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                       ),
                     ),
@@ -1210,7 +1057,7 @@ class _CreateEventPageState extends State<CreateEventPage>
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Your event will be visible to all users. They can subscribe to get notifications when the event starts.',
+                            'Your event will be visible to all users',
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.primary,
                               fontSize: 13,

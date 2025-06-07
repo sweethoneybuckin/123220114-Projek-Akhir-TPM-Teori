@@ -37,12 +37,9 @@ class _VinylDetailPageState extends State<VinylDetailPage>
   DateTime? _lastShakeTime;
   bool _isShaking = false;
   
-  // Animation controllers for shake feedback
+  // Animation controllers for shake feedback (album art only)
   late AnimationController _shakeAnimationController;
-  late AnimationController _favoriteAnimationController;
   late Animation<double> _shakeAnimation;
-  late Animation<double> _favoriteScaleAnimation;
-  late Animation<double> _favoriteRotationAnimation;
   
   // Currency data
   String _selectedCountry = 'US';
@@ -99,33 +96,12 @@ class _VinylDetailPageState extends State<VinylDetailPage>
       vsync: this,
     );
 
-    _favoriteAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
     _shakeAnimation = Tween<double>(
       begin: 0.0,
       end: 10.0,
     ).animate(CurvedAnimation(
       parent: _shakeAnimationController,
       curve: Curves.elasticOut,
-    ));
-
-    _favoriteScaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.2,
-    ).animate(CurvedAnimation(
-      parent: _favoriteAnimationController,
-      curve: const Interval(0.0, 0.5, curve: Curves.elasticOut),
-    ));
-
-    _favoriteRotationAnimation = Tween<double>(
-      begin: 0.0,
-      end: 2 * pi,
-    ).animate(CurvedAnimation(
-      parent: _favoriteAnimationController,
-      curve: const Interval(0.2, 0.8, curve: Curves.easeInOut),
     ));
   }
 
@@ -160,13 +136,13 @@ class _VinylDetailPageState extends State<VinylDetailPage>
       _isShaking = true;
     });
 
-    // Trigger shake animation
+    // Trigger shake animation (album art only)
     _shakeAnimationController.forward().then((_) {
       _shakeAnimationController.reverse();
     });
 
-    // Add to favorites
-    _addToFavoritesWithAnimation();
+    // Add to favorites without animation
+    _addToFavoritesWithoutAnimation();
 
     // Reset shake state after a delay
     Timer(const Duration(milliseconds: 1500), () {
@@ -178,7 +154,7 @@ class _VinylDetailPageState extends State<VinylDetailPage>
     });
   }
 
-  Future<void> _addToFavoritesWithAnimation() async {
+  Future<void> _addToFavoritesWithoutAnimation() async {
     try {
       if (_isFavorite) {
         // If already favorite, show a different message
@@ -195,11 +171,6 @@ class _VinylDetailPageState extends State<VinylDetailPage>
       if (success) {
         setState(() {
           _isFavorite = true;
-        });
-
-        // Trigger favorite animation
-        _favoriteAnimationController.forward().then((_) {
-          _favoriteAnimationController.reverse();
         });
 
         _showCustomSnackBar(
@@ -284,7 +255,7 @@ class _VinylDetailPageState extends State<VinylDetailPage>
           );
         }
       } else {
-        await _addToFavoritesWithAnimation();
+        await _addToFavoritesWithoutAnimation();
       }
     } catch (e) {
       _showCustomSnackBar(
@@ -300,7 +271,6 @@ class _VinylDetailPageState extends State<VinylDetailPage>
     _presenter.detachDetailView();
     _accelerometerSubscription.cancel();
     _shakeAnimationController.dispose();
-    _favoriteAnimationController.dispose();
     super.dispose();
   }
 
@@ -382,20 +352,13 @@ class _VinylDetailPageState extends State<VinylDetailPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '📱 Shake to add to favorites!',
+                  'Shake to add to favorites!',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.purple[700],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Shake your device to quickly add this vinyl to your favorites',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.purple[600],
-                  ),
-                ),
+                
               ],
             ),
           ),
@@ -668,30 +631,14 @@ class _VinylDetailPageState extends State<VinylDetailPage>
               onPressed: () => Navigator.of(context).pop(),
             ),
             actions: [
-              // Favorite button with animation
-              AnimatedBuilder(
-                animation: _favoriteScaleAnimation,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: _favoriteScaleAnimation.value,
-                    child: AnimatedBuilder(
-                      animation: _favoriteRotationAnimation,
-                      builder: (context, child) {
-                        return Transform.rotate(
-                          angle: _favoriteRotationAnimation.value,
-                          child: IconButton(
-                            icon: Icon(
-                              _isFavorite ? Icons.favorite : Icons.favorite_border,
-                              color: _isFavorite ? Colors.red : Colors.white,
-                              size: 28,
-                            ),
-                            onPressed: _toggleFavorite,
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
+              // Simple favorite button without animation
+              IconButton(
+                icon: Icon(
+                  _isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: _isFavorite ? Colors.red : Colors.white,
+                  size: 28,
+                ),
+                onPressed: _toggleFavorite,
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(

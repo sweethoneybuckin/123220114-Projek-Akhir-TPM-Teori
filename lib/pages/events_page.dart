@@ -33,7 +33,6 @@ class _EventsPageState extends State<EventsPage>
   late AnimationController _animationController;
   late AnimationController _fabAnimationController;
   late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
   late Animation<double> _fabScaleAnimation;
 
   @override
@@ -62,14 +61,6 @@ class _EventsPageState extends State<EventsPage>
     ).animate(CurvedAnimation(
       parent: _animationController,
       curve: const Interval(0.0, 0.8, curve: Curves.easeInOut),
-    ));
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
     ));
 
     _fabScaleAnimation = Tween<double>(
@@ -561,14 +552,11 @@ class _EventsPageState extends State<EventsPage>
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(child: _buildContent()),
-              ],
-            ),
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(child: _buildContent()),
+            ],
           ),
         ),
       ),
