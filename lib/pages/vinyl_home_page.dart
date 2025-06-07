@@ -301,7 +301,7 @@ class _VinylHomePageState extends State<VinylHomePage>
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Vinyl Store',
+                      'Vinyl Discovery',
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -807,7 +807,7 @@ class _VinylHomePageState extends State<VinylHomePage>
         items: [
           const BottomNavigationBarItem(
             icon: Icon(Icons.album),
-            label: 'Vinyl Store',
+            label: 'Vinyl Discovery',
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.event),
