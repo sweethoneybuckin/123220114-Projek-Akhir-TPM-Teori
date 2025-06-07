@@ -1,8 +1,12 @@
 // lib/pages/vinyl_detail_page.dart
 
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:math';
+import 'package:sensors_plus/sensors_plus.dart';
 import '../presenters/vinyl_presenter.dart';
 import '../models/vinyl_model.dart';
+import '../services/favorite_service.dart';
 
 class VinylDetailPage extends StatefulWidget {
   final VinylRelease release;
@@ -17,14 +21,28 @@ class VinylDetailPage extends StatefulWidget {
 }
 
 class _VinylDetailPageState extends State<VinylDetailPage> 
-    implements VinylDetailView {
+    with TickerProviderStateMixin implements VinylDetailView {
   
   final VinylPresenter _presenter = VinylPresenter();
+  final FavoriteService _favoriteService = FavoriteService();
   
   VinylRelease? _detailedRelease;
   bool _isLoading = false;
   String? _errorMessage;
-
+  bool _isFavorite = false;
+  
+  // Accelerometer variables
+  late StreamSubscription<AccelerometerEvent> _accelerometerSubscription;
+  double _shakeThreshold = 15.0; // Sensitivity threshold
+  DateTime? _lastShakeTime;
+  bool _isShaking = false;
+  
+  // Animation controllers for shake feedback
+  late AnimationController _shakeAnimationController;
+  late AnimationController _favoriteAnimationController;
+  late Animation<double> _shakeAnimation;
+  late Animation<double> _favoriteScaleAnimation;
+  late Animation<double> _favoriteRotationAnimation;
   
   // Currency data
   String _selectedCountry = 'US';
@@ -67,14 +85,222 @@ class _VinylDetailPageState extends State<VinylDetailPage>
     super.initState();
     _presenter.attachDetailView(this);
     _detailedRelease = widget.release;
+    _setupAnimations();
+    _initializeAccelerometer();
+    _checkFavoriteStatus();
     
     // Load detailed information
     _presenter.getReleaseDetails(widget.release.id);
+  }
+
+  void _setupAnimations() {
+    _shakeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _favoriteAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _shakeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 10.0,
+    ).animate(CurvedAnimation(
+      parent: _shakeAnimationController,
+      curve: Curves.elasticOut,
+    ));
+
+    _favoriteScaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
+    ).animate(CurvedAnimation(
+      parent: _favoriteAnimationController,
+      curve: const Interval(0.0, 0.5, curve: Curves.elasticOut),
+    ));
+
+    _favoriteRotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 2 * pi,
+    ).animate(CurvedAnimation(
+      parent: _favoriteAnimationController,
+      curve: const Interval(0.2, 0.8, curve: Curves.easeInOut),
+    ));
+  }
+
+  void _initializeAccelerometer() {
+    _accelerometerSubscription = accelerometerEvents.listen((AccelerometerEvent event) {
+      _handleAccelerometerEvent(event);
+    });
+  }
+
+  void _handleAccelerometerEvent(AccelerometerEvent event) {
+    // Calculate the magnitude of acceleration
+    double magnitude = sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
+    
+    // Remove gravity (approximately 9.8 m/s²)
+    magnitude = (magnitude - 9.8).abs();
+    
+    DateTime now = DateTime.now();
+    
+    // Check if shake threshold is exceeded and enough time has passed since last shake
+    if (magnitude > _shakeThreshold && 
+        (_lastShakeTime == null || now.difference(_lastShakeTime!).inMilliseconds > 1000)) {
+      
+      _lastShakeTime = now;
+      _onShakeDetected();
+    }
+  }
+
+  void _onShakeDetected() {
+    if (_isShaking || _detailedRelease == null) return;
+    
+    setState(() {
+      _isShaking = true;
+    });
+
+    // Trigger shake animation
+    _shakeAnimationController.forward().then((_) {
+      _shakeAnimationController.reverse();
+    });
+
+    // Add to favorites
+    _addToFavoritesWithAnimation();
+
+    // Reset shake state after a delay
+    Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() {
+          _isShaking = false;
+        });
+      }
+    });
+  }
+
+  Future<void> _addToFavoritesWithAnimation() async {
+    try {
+      if (_isFavorite) {
+        // If already favorite, show a different message
+        _showCustomSnackBar(
+          '💿 Already in favorites!',
+          backgroundColor: Colors.orange,
+          icon: Icons.favorite,
+        );
+        return;
+      }
+
+      final success = await _favoriteService.addToFavorites(_detailedRelease!);
+      
+      if (success) {
+        setState(() {
+          _isFavorite = true;
+        });
+
+        // Trigger favorite animation
+        _favoriteAnimationController.forward().then((_) {
+          _favoriteAnimationController.reverse();
+        });
+
+        _showCustomSnackBar(
+          '🎉 Added to favorites!',
+          backgroundColor: Colors.green,
+          icon: Icons.favorite,
+        );
+
+        // Add haptic feedback
+        _triggerHapticFeedback();
+      } else {
+        _showCustomSnackBar(
+          '❌ Failed to add to favorites',
+          backgroundColor: Colors.red,
+          icon: Icons.error,
+        );
+      }
+    } catch (e) {
+      _showCustomSnackBar(
+        '❌ Error adding to favorites',
+        backgroundColor: Colors.red,
+        icon: Icons.error,
+      );
+    }
+  }
+
+  void _triggerHapticFeedback() {
+    // You can use HapticFeedback.heavyImpact() if you import 'package:flutter/services.dart'
+    // HapticFeedback.heavyImpact();
+  }
+
+  void _showCustomSnackBar(String message, {required Color backgroundColor, required IconData icon}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        action: SnackBarAction(
+          label: 'View Favorites',
+          textColor: Colors.white,
+          onPressed: () {
+            Navigator.of(context).pushNamed('/favorites');
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _checkFavoriteStatus() async {
+    if (_detailedRelease != null) {
+      final isFav = await _favoriteService.isFavorite(_detailedRelease!.id);
+      setState(() {
+        _isFavorite = isFav;
+      });
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_detailedRelease == null) return;
+
+    try {
+      if (_isFavorite) {
+        final success = await _favoriteService.removeFromFavorites(_detailedRelease!.id);
+        if (success) {
+          setState(() {
+            _isFavorite = false;
+          });
+          _showCustomSnackBar(
+            '💔 Removed from favorites',
+            backgroundColor: Colors.grey,
+            icon: Icons.favorite_border,
+          );
+        }
+      } else {
+        await _addToFavoritesWithAnimation();
+      }
+    } catch (e) {
+      _showCustomSnackBar(
+        '❌ Error updating favorites',
+        backgroundColor: Colors.red,
+        icon: Icons.error,
+      );
+    }
   }
   
   @override
   void dispose() {
     _presenter.detachDetailView();
+    _accelerometerSubscription.cancel();
+    _shakeAnimationController.dispose();
+    _favoriteAnimationController.dispose();
     super.dispose();
   }
 
@@ -119,6 +345,63 @@ class _VinylDetailPageState extends State<VinylDetailPage>
         _selectedCountry = countryCode;
       });
     }
+  }
+
+  Widget _buildShakeInstructions() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.purple.withOpacity(0.1),
+            Colors.blue.withOpacity(0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.purple.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          AnimatedBuilder(
+            animation: _shakeAnimation,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(_isShaking ? _shakeAnimation.value : 0, 0),
+                child: const Icon(
+                  Icons.vibration,
+                  color: Colors.purple,
+                  size: 24,
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '📱 Shake to add to favorites!',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purple[700],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Shake your device to quickly add this vinyl to your favorites',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.purple[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCurrencySelector() {
@@ -384,6 +667,33 @@ class _VinylDetailPageState extends State<VinylDetailPage>
               icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
               onPressed: () => Navigator.of(context).pop(),
             ),
+            actions: [
+              // Favorite button with animation
+              AnimatedBuilder(
+                animation: _favoriteScaleAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _favoriteScaleAnimation.value,
+                    child: AnimatedBuilder(
+                      animation: _favoriteRotationAnimation,
+                      builder: (context, child) {
+                        return Transform.rotate(
+                          angle: _favoriteRotationAnimation.value,
+                          child: IconButton(
+                            icon: Icon(
+                              _isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: _isFavorite ? Colors.red : Colors.white,
+                              size: 28,
+                            ),
+                            onPressed: _toggleFavorite,
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(
@@ -401,46 +711,57 @@ class _VinylDetailPageState extends State<VinylDetailPage>
                     Center(
                       child: Hero(
                         tag: 'album-${release.id}',
-                        child: Container(
-                          width: 200,
-                          height: 200,
-                          margin: const EdgeInsets.only(top: 40),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
+                        child: AnimatedBuilder(
+                          animation: _shakeAnimation,
+                          builder: (context, child) {
+                            return Transform.translate(
+                              offset: Offset(
+                                _isShaking ? _shakeAnimation.value * sin(_shakeAnimationController.value * 4 * pi) : 0,
+                                0,
                               ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: release.coverImage != null || release.thumb != null
-                              ? Image.network(
-                                  release.coverImage ?? release.thumb!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: Colors.grey[300],
-                                      child: Icon(
-                                        Icons.album,
-                                        size: 80,
-                                        color: Colors.grey[600],
-                                      ),
-                                    );
-                                  },
-                                )
-                              : Container(
-                                  color: Colors.grey[300],
-                                  child: Icon(
-                                    Icons.album,
-                                    size: 80,
-                                    color: Colors.grey[600],
-                                  ),
+                              child: Container(
+                                width: 200,
+                                height: 200,
+                                margin: const EdgeInsets.only(top: 40),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
                                 ),
-                          ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: release.coverImage != null || release.thumb != null
+                                    ? Image.network(
+                                        release.coverImage ?? release.thumb!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Container(
+                                            color: Colors.grey[300],
+                                            child: Icon(
+                                              Icons.album,
+                                              size: 80,
+                                              color: Colors.grey[600],
+                                            ),
+                                          );
+                                        },
+                                      )
+                                    : Container(
+                                        color: Colors.grey[300],
+                                        child: Icon(
+                                          Icons.album,
+                                          size: 80,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ),
@@ -508,6 +829,9 @@ class _VinylDetailPageState extends State<VinylDetailPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Shake Instructions
+          _buildShakeInstructions(),
+
           // Title and Artist
           _buildTitleSection(release),
           const SizedBox(height: 24),
@@ -782,6 +1106,7 @@ class _VinylDetailPageState extends State<VinylDetailPage>
         _errorMessage = null;
         _isLoading = false;
       });
+      _checkFavoriteStatus();
     }
   }
 }

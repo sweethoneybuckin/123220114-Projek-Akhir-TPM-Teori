@@ -100,24 +100,39 @@ class _EventDetailPageState extends State<EventDetailPage>
     await _presenter.loadEventDetails(widget.event.id!);
   }
 
-  void _subscribeToEvent() {
-    _buttonAnimationController.forward().then((_) {
-      _buttonAnimationController.reverse();
-    });
-    
-    _presenter.subscribeToEvent(widget.event.id!, enableNotifications: false);
-  }
-
-  void _unsubscribeFromEvent() {
-    _buttonAnimationController.forward().then((_) {
-      _buttonAnimationController.reverse();
-    });
-    
-    _presenter.unsubscribeFromEvent(widget.event.id!);
-  }
-
   void _toggleNotification(bool enable) {
-    _presenter.toggleNotification(widget.event.id!, enable);
+    _buttonAnimationController.forward().then((_) {
+      _buttonAnimationController.reverse();
+    });
+    
+    // If enabling notifications but not subscribed, subscribe first
+    if (enable && !(_event?.isSubscribed ?? false)) {
+      _presenter.subscribeToEvent(widget.event.id!, enableNotifications: true);
+    } else {
+      _presenter.toggleNotification(widget.event.id!, enable);
+    }
+    
+    // Show feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              enable ? Icons.notifications_active : Icons.notifications_off,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Text(enable ? 'Notifications enabled' : 'Notifications disabled'),
+          ],
+        ),
+        backgroundColor: enable ? Colors.green : Colors.grey[600],
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
   }
 
   void _onTimezoneChanged(String timezone) {
@@ -145,10 +160,6 @@ class _EventDetailPageState extends State<EventDetailPage>
 
   Widget _buildHeader() {
     if (_event == null) return const SizedBox.shrink();
-
-    final isPast = _presenter.isEventPast(_event!);
-    final isSoon = _presenter.isEventSoon(_event!);
-    final isToday = _presenter.isEventToday(_event!, timezone: _selectedTimezone);
 
     return Container(
       width: double.infinity,
@@ -179,114 +190,28 @@ class _EventDetailPageState extends State<EventDetailPage>
                     ),
                   ),
                   const Spacer(),
-                  if (_event!.createdBy == _authService.getCurrentUser()?.id)
+                  if (_authService.getCurrentUser() != null && !_presenter.isEventPast(_event!))
                     IconButton(
                       onPressed: () {
-                        // TODO: Implement edit functionality
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Edit feature coming soon!')),
-                        );
+                        final currentNotificationState = _event!.notificationEnabled ?? false;
+                        _toggleNotification(!currentNotificationState);
                       },
-                      icon: const Icon(Icons.edit, color: Colors.white),
+                      icon: Icon(
+                        (_event!.notificationEnabled ?? false) 
+                          ? Icons.notifications_active 
+                          : Icons.notifications_off,
+                        color: Colors.white,
+                      ),
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.2),
+                        backgroundColor: (_event!.notificationEnabled ?? false)
+                          ? Colors.green.withOpacity(0.3)
+                          : Colors.white.withOpacity(0.2),
                       ),
                     ),
                 ],
               ),
               
-              const SizedBox(height: 20),
-              
-              // Event type icon and badge
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      _event!.eventType.icon,
-                      style: const TextStyle(fontSize: 32),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _event!.eventType.displayName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        if (isPast)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[600]?.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Past Event',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          )
-                        else if (isSoon)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.orange[600]?.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Starting Soon',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          )
-                        else if (isToday)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[600]?.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Today',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 20),
+              const SizedBox(height: 40),
               
               // Event title
               Text(
@@ -528,584 +453,6 @@ class _EventDetailPageState extends State<EventDetailPage>
     return content;
   }
 
-  Widget _buildSubscriptionCard() {
-    if (_event == null) return const SizedBox.shrink();
-
-    final isSubscribed = _event!.isSubscribed ?? false;
-    final notificationEnabled = _event!.notificationEnabled ?? false;
-    final isPast = _presenter.isEventPast(_event!);
-    final currentUser = _authService.getCurrentUser();
-
-    if (currentUser == null) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Icon(
-                Icons.login,
-                size: 48,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Login Required',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Please login to subscribe to events and get notifications',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Subscription',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // DEBUG INFO - UPDATED WITH ERROR DETAILS
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '🔍 Debug Info',
-                    style: TextStyle(
-                      color: Colors.blue[700],
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Service Initialized: ${NotificationService().isInitialized}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: NotificationService().isInitialized ? Colors.green[600] : Colors.red[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  FutureBuilder<bool>(
-                    future: NotificationService().areNotificationsEnabled(),
-                    builder: (context, snapshot) {
-                      final hasPermissions = snapshot.data ?? false;
-                      return Text(
-                        'Permissions: ${snapshot.data ?? 'Loading...'}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: hasPermissions ? Colors.green[600] : Colors.red[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      );
-                    },
-                  ),
-                  FutureBuilder<List<PendingNotificationRequest>>(
-                    future: NotificationService().getPendingNotifications(),
-                    builder: (context, snapshot) {
-                      return Text(
-                        'Pending: ${snapshot.data?.length ?? 'Loading...'}',
-                        style: const TextStyle(fontSize: 12),
-                      );
-                    },
-                  ),
-                  // Show error if any
-                  if (NotificationService().lastError != null) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.red[50],
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.red[200]!),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '❌ Last Error:',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.red[700],
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            NotificationService().lastError!,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.red[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            // PERMISSION TEST SECTION - ADD THIS AFTER DEBUG INFO
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.purple[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.purple[200]!),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    '🔐 Permission Test',
-                    style: TextStyle(
-                      color: Colors.purple[700],
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            try {
-                              // Manual permission request
-                              final plugin = FlutterLocalNotificationsPlugin();
-                              final androidImplementation = plugin
-                                  .resolvePlatformSpecificImplementation<
-                                      AndroidFlutterLocalNotificationsPlugin>();
-                              
-                              if (androidImplementation != null) {
-                                final bool? granted = await androidImplementation
-                                    .requestNotificationsPermission();
-                                
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Permission result: $granted'),
-                                    backgroundColor: granted == true ? Colors.green : Colors.red,
-                                  ),
-                                );
-                                
-                                setState(() {}); // Refresh UI
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Not on Android platform'),
-                                    backgroundColor: Colors.blue,
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Permission error: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.purple[600],
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                          ),
-                          child: const Text('Request Permission', style: TextStyle(fontSize: 12)),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            // Open app settings
-                            try {
-                              final plugin = FlutterLocalNotificationsPlugin();
-                              final androidImplementation = plugin
-                                  .resolvePlatformSpecificImplementation<
-                                      AndroidFlutterLocalNotificationsPlugin>();
-                              
-                              if (androidImplementation != null) {
-                                // Note: This method may not exist in all versions
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Please enable notifications in device Settings > Apps > projekakhirteori > Notifications'),
-                                    duration: Duration(seconds: 5),
-                                    backgroundColor: Colors.blue,
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Settings error: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.indigo[600],
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                          ),
-                          child: const Text('App Settings', style: TextStyle(fontSize: 12)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            // TEST NOTIFICATION BUTTON - UPDATED VERSION
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.orange[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[200]!),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        NotificationService().isInitialized 
-                          ? Icons.notifications_active 
-                          : Icons.notifications_off,
-                        color: NotificationService().isInitialized 
-                          ? Colors.green[600] 
-                          : Colors.red[600],
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '🧪 Test Notifications',
-                        style: TextStyle(
-                          color: Colors.orange[700],
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        NotificationService().isInitialized ? 'Ready' : 'Not Ready',
-                        style: TextStyle(
-                          color: NotificationService().isInitialized 
-                            ? Colors.green[600] 
-                            : Colors.red[600],
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            try {
-                              // First ensure the service is initialized
-                              if (!NotificationService().isInitialized) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Initializing notification service...'),
-                                    backgroundColor: Colors.blue,
-                                  ),
-                                );
-                                
-                                await NotificationService().initialize();
-                                
-                                // Refresh the UI
-                                setState(() {});
-                              }
-                              
-                              if (NotificationService().isInitialized) {
-                                await NotificationService().showImmediateNotification(
-                                  title: 'Test Notification ✅',
-                                  body: 'This is a test notification for ${_event!.title}!',
-                                );
-                                
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Test notification sent!'),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Failed to initialize notification service'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              print('Error testing notification: $e');
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange[600],
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          child: const Text('Test Notification'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () async {
-                          try {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Initializing notification service...'),
-                                backgroundColor: Colors.blue,
-                              ),
-                            );
-                            
-                            await NotificationService().initialize();
-                            setState(() {}); // Refresh the UI
-                            
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  NotificationService().isInitialized 
-                                    ? 'Notification service initialized!' 
-                                    : 'Failed to initialize'
-                                ),
-                                backgroundColor: NotificationService().isInitialized 
-                                  ? Colors.green 
-                                  : Colors.red,
-                              ),
-                            );
-                          } catch (e) {
-                            print('Error initializing: $e');
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Init Error: $e'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue[600],
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                        ),
-                        child: const Text('Init'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            if (isPast) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.history, color: Colors.grey[600]),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'This event has already passed',
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else if (isSubscribed) ...[
-              // Subscribed state
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green[200]!),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.green[700]),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'You are subscribed to this event',
-                            style: TextStyle(
-                              color: Colors.green[700],
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Notification toggle
-                    Row(
-                      children: [
-                        Icon(
-                          notificationEnabled ? Icons.notifications_active : Icons.notifications_off,
-                          color: Colors.green[700],
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Notifications',
-                            style: TextStyle(
-                              color: Colors.green[700],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        Switch(
-                          value: notificationEnabled,
-                          onChanged: _toggleNotification,
-                          activeColor: Colors.green[700],
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 12),
-                    
-                    // Unsubscribe button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ScaleTransition(
-                        scale: _buttonScaleAnimation,
-                        child: OutlinedButton.icon(
-                          onPressed: _unsubscribeFromEvent,
-                          icon: const Icon(Icons.bookmark_remove),
-                          label: const Text('Unsubscribe'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red[700],
-                            side: BorderSide(color: Colors.red[300]!),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              // Not subscribed state
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.bookmark_border,
-                      size: 32,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Subscribe to this event',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Get notified when the event starts and never miss important updates',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    SizedBox(
-                      width: double.infinity,
-                      child: ScaleTransition(
-                        scale: _buttonScaleAnimation,
-                        child: ElevatedButton.icon(
-                          onPressed: _subscribeToEvent,
-                          icon: const Icon(Icons.bookmark_add),
-                          label: const Text('Subscribe'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1161,8 +508,6 @@ class _EventDetailPageState extends State<EventDetailPage>
                             _buildTimezoneSelector(),
                             const SizedBox(height: 16),
                             _buildEventInfo(),
-                            const SizedBox(height: 16),
-                            _buildSubscriptionCard(),
                             const SizedBox(height: 20),
                           ],
                         ),

@@ -1,14 +1,16 @@
-// lib/pages/vinyl_home_page.dart
+// lib/pages/vinyl_home_page.dart (Updated with Favorites navigation)
 
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../presenters/vinyl_presenter.dart';
 import '../models/vinyl_model.dart';
 import '../services/auth_service.dart';
+import '../services/favorite_service.dart';
 import 'vinyl_detail_page.dart';
 import 'login_page.dart';
 import 'profile_page.dart';
 import 'events_page.dart';
+import 'favorite_vinyl_page.dart';
 
 class VinylHomePage extends StatefulWidget {
   const VinylHomePage({super.key});
@@ -24,12 +26,14 @@ class _VinylHomePageState extends State<VinylHomePage>
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final AuthService _authService = AuthService();
+  final FavoriteService _favoriteService = FavoriteService();
   final PageController _pageController = PageController();
   
   List<VinylRelease> _releases = [];
   bool _isLoading = false;
   String? _errorMessage;
   int _currentPageIndex = 0;
+  int _favoritesCount = 0;
   
   // Pagination state
   bool _hasNext = false;
@@ -47,11 +51,19 @@ class _VinylHomePageState extends State<VinylHomePage>
     _presenter.attachListView(this);
     // Load current user and popular releases
     _loadUserAndReleases();
+    _loadFavoritesCount();
   }
   
   Future<void> _loadUserAndReleases() async {
     await _authService.loadCurrentUser();
     _presenter.getPopularReleases();
+  }
+
+  Future<void> _loadFavoritesCount() async {
+    final count = await _favoriteService.getFavoritesCount();
+    setState(() {
+      _favoritesCount = count;
+    });
   }
   
   @override
@@ -203,6 +215,50 @@ class _VinylHomePageState extends State<VinylHomePage>
                 });
               },
             ),
+
+            // Favorites menu item - NEW!
+            ListTile(
+              leading: Stack(
+                children: [
+                  const Icon(Icons.favorite_outline),
+                  if (_favoritesCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(1),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 12,
+                          minHeight: 12,
+                        ),
+                        child: Text(
+                          '$_favoritesCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              title: Text('My Favorites ($_favoritesCount)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const FavoriteVinylPage()),
+                ).then((_) {
+                  // Refresh favorites count when returning
+                  _loadFavoritesCount();
+                });
+              },
+            ),
+
             ListTile(
               leading: const Icon(Icons.settings_outlined),
               title: const Text('Settings'),
@@ -225,7 +281,7 @@ class _VinylHomePageState extends State<VinylHomePage>
                   applicationVersion: '1.0.0',
                   applicationIcon: const Icon(Icons.album),
                   children: [
-                    const Text('A beautiful vinyl record store app with authentication, profile management, and event scheduling.'),
+                    const Text('A beautiful vinyl record store app with authentication, profile management, event scheduling, and shake-to-favorite functionality.'),
                   ],
                 );
               },
@@ -285,7 +341,7 @@ class _VinylHomePageState extends State<VinylHomePage>
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // Title and User
+              // Title, Favorites, and User
               Row(
                 children: [
                   Icon(
@@ -303,6 +359,55 @@ class _VinylHomePageState extends State<VinylHomePage>
                       ),
                     ),
                   ),
+
+                  // Favorites icon with badge - NEW!
+                  Container(
+                    margin: const EdgeInsets.only(right: 12),
+                    child: Stack(
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.favorite,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (context) => const FavoriteVinylPage()),
+                            ).then((_) {
+                              _loadFavoritesCount();
+                            });
+                          },
+                        ),
+                        if (_favoritesCount > 0)
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              child: Text(
+                                '$_favoritesCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  
                   // User avatar/menu with profile photo support
                   GestureDetector(
                     onTap: _showUserMenu,
@@ -394,6 +499,38 @@ class _VinylHomePageState extends State<VinylHomePage>
                   ],
                 ),
               ),
+              
+              // Shake instruction hint - NEW!
+              if (_releases.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.vibration,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Shake device on detail page to add to favorites!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -562,6 +699,7 @@ class _VinylHomePageState extends State<VinylHomePage>
     return RefreshIndicator(
       onRefresh: () async {
         await _presenter.getPopularReleases();
+        await _loadFavoritesCount(); // Refresh favorites count too
       },
       child: ListView.builder(
         controller: _scrollController,
@@ -584,7 +722,10 @@ class _VinylHomePageState extends State<VinylHomePage>
             MaterialPageRoute(
               builder: (context) => VinylDetailPage(release: release),
             ),
-          );
+          ).then((_) {
+            // Refresh favorites count when returning from detail page
+            _loadFavoritesCount();
+          });
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -723,11 +864,21 @@ class _VinylHomePageState extends State<VinylHomePage>
                 ),
               ),
               
-              // Arrow
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey[400],
+              // Shake hint
+              Column(
+                children: [
+                  Icon(
+                    Icons.vibration,
+                    size: 16,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 4),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Colors.grey[400],
+                  ),
+                ],
               ),
             ],
           ),
@@ -751,6 +902,7 @@ class _VinylHomePageState extends State<VinylHomePage>
           children: [
             _buildVinylPage(),
             const EventsPage(),
+            const FavoriteVinylPage(), // Add favorites as a tab - NEW!
           ],
         ),
       ),
@@ -765,19 +917,56 @@ class _VinylHomePageState extends State<VinylHomePage>
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
           );
+          
+          // Refresh favorites count when navigating to favorites tab
+          if (index == 2) {
+            _loadFavoritesCount();
+          }
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
         selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Colors.grey[600],
-        items: const [
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.album),
             label: 'Vinyl Store',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.event),
             label: 'Events',
+          ),
+          BottomNavigationBarItem(
+            icon: Stack(
+              children: [
+                const Icon(Icons.favorite),
+                if (_favoritesCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(1),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 12,
+                        minHeight: 12,
+                      ),
+                      child: Text(
+                        '$_favoritesCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            label: 'Favorites',
           ),
         ],
       ),

@@ -27,12 +27,7 @@ class _EventsPageState extends State<EventsPage>
   List<Event> _events = [];
   bool _isLoading = false;
   String? _errorMessage;
-  
-  // Filter state
-  String _selectedFilter = 'upcoming';
-  EventType? _selectedEventType;
   String _selectedTimezone = 'WIB';
-  bool _showFilters = false;
   
   // Animation controllers
   late AnimationController _animationController;
@@ -105,62 +100,9 @@ class _EventsPageState extends State<EventsPage>
   void _performSearch() {
     final query = _searchController.text.trim();
     if (query.isEmpty) {
-      _applyCurrentFilter();
+      _presenter.loadUpcomingEvents();
     } else {
       _presenter.searchEvents(query);
-    }
-  }
-
-  void _applyCurrentFilter() {
-    switch (_selectedFilter) {
-      case 'all':
-        _presenter.loadAllEvents();
-        break;
-      case 'upcoming':
-        _presenter.loadUpcomingEvents();
-        break;
-      case 'today':
-        _presenter.loadTodaysEvents(_selectedTimezone);
-        break;
-      case 'week':
-        _presenter.loadThisWeeksEvents(_selectedTimezone);
-        break;
-      case 'subscribed':
-        _presenter.loadUserSubscribedEvents();
-        break;
-      case 'notifications':
-        _presenter.loadEventsWithNotifications();
-        break;
-      case 'type':
-        if (_selectedEventType != null) {
-          _presenter.loadEventsByType(_selectedEventType!);
-        } else {
-          _presenter.loadUpcomingEvents();
-        }
-        break;
-      default:
-        _presenter.loadUpcomingEvents();
-        break;
-    }
-  }
-
-  void _onFilterChanged(String filter) {
-    setState(() {
-      _selectedFilter = filter;
-      _selectedEventType = null;
-    });
-    _applyCurrentFilter();
-  }
-
-  void _onEventTypeChanged(EventType? eventType) {
-    setState(() {
-      _selectedEventType = eventType;
-      _selectedFilter = 'type';
-    });
-    if (eventType != null) {
-      _presenter.loadEventsByType(eventType);
-    } else {
-      _presenter.loadUpcomingEvents();
     }
   }
 
@@ -168,11 +110,6 @@ class _EventsPageState extends State<EventsPage>
     setState(() {
       _selectedTimezone = timezone;
     });
-    
-    // Refresh current view if it's timezone-dependent
-    if (_selectedFilter == 'today' || _selectedFilter == 'week') {
-      _applyCurrentFilter();
-    }
   }
 
   Future<void> _createEvent() async {
@@ -188,7 +125,7 @@ class _EventsPageState extends State<EventsPage>
 
     if (result == true) {
       // Refresh events list
-      _applyCurrentFilter();
+      _presenter.loadUpcomingEvents();
     }
   }
 
@@ -216,17 +153,7 @@ class _EventsPageState extends State<EventsPage>
                   ),
                 ),
               ),
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _showFilters = !_showFilters;
-                  });
-                },
-                icon: Icon(
-                  _showFilters ? Icons.filter_list_off : Icons.filter_list,
-                  color: Colors.white,
-                ),
-              ),
+
             ],
           ),
           const SizedBox(height: 16),
@@ -270,163 +197,9 @@ class _EventsPageState extends State<EventsPage>
     );
   }
 
-  Widget _buildFilterBar() {
-    if (!_showFilters) return const SizedBox.shrink();
-
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Filter Options
-          Text(
-            'Filter Events',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildFilterChip('Upcoming', 'upcoming'),
-                const SizedBox(width: 8),
-                _buildFilterChip('All Events', 'all'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Today', 'today'),
-                const SizedBox(width: 8),
-                _buildFilterChip('This Week', 'week'),
-                const SizedBox(width: 8),
-                _buildFilterChip('My Subscriptions', 'subscribed'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Notifications', 'notifications'),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Event Type Filter
-          Text(
-            'Event Type',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildEventTypeChip(null, 'All Types'),
-                const SizedBox(width: 8),
-                ...EventType.values.map((type) => 
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _buildEventTypeChip(type, type.displayName),
-                  )
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Timezone Selector
-          Row(
-            children: [
-              Text(
-                'Timezone:',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedTimezone,
-                    isDense: true,
-                    onChanged: (String? value) {
-                      if (value != null) {
-                        _onTimezoneChanged(value);
-                      }
-                    },
-                    items: EventService.getAvailableTimezones().map((String timezone) {
-                      return DropdownMenuItem<String>(
-                        value: timezone,
-                        child: Text(
-                          EventService.getTimezoneDisplayName(timezone),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, String value) {
-    final isSelected = _selectedFilter == value;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) => _onFilterChanged(value),
-      selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-      checkmarkColor: Theme.of(context).colorScheme.primary,
-      labelStyle: TextStyle(
-        color: isSelected 
-          ? Theme.of(context).colorScheme.primary 
-          : Colors.grey[700],
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        fontSize: 12,
-      ),
-    );
-  }
-
-  Widget _buildEventTypeChip(EventType? eventType, String label) {
-    final isSelected = _selectedEventType == eventType;
-    return FilterChip(
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (eventType != null) ...[
-            Text(eventType.icon),
-            const SizedBox(width: 4),
-          ],
-          Text(label),
-        ],
-      ),
-      selected: isSelected,
-      onSelected: (selected) => _onEventTypeChanged(eventType),
-      selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-      checkmarkColor: Theme.of(context).colorScheme.primary,
-      labelStyle: TextStyle(
-        color: isSelected 
-          ? Theme.of(context).colorScheme.primary 
-          : Colors.grey[700],
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        fontSize: 11,
-      ),
-    );
-  }
-
   Widget _buildEventCard(Event event) {
     final isSubscribed = event.isSubscribed ?? false;
+    final notificationEnabled = event.notificationEnabled ?? false;
     final isPast = _presenter.isEventPast(event);
     final isSoon = _presenter.isEventSoon(event);
     final isToday = _presenter.isEventToday(event, timezone: _selectedTimezone);
@@ -444,7 +217,7 @@ class _EventsPageState extends State<EventsPage>
           
           if (result == true) {
             // Refresh events if something changed
-            _applyCurrentFilter();
+            _presenter.loadUpcomingEvents();
           }
         },
         borderRadius: BorderRadius.circular(12),
@@ -456,20 +229,6 @@ class _EventsPageState extends State<EventsPage>
               // Header Row
               Row(
                 children: [
-                  // Event Type Icon
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      event.eventType.icon,
-                      style: const TextStyle(fontSize: 20),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  
                   // Event Info
                   Expanded(
                     child: Column(
@@ -484,15 +243,6 @@ class _EventsPageState extends State<EventsPage>
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          event.eventType.displayName,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -505,26 +255,28 @@ class _EventsPageState extends State<EventsPage>
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.green[50],
+                            color: notificationEnabled ? Colors.orange[50] : Colors.green[50],
                             borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.green[200]!),
+                            border: Border.all(
+                              color: notificationEnabled ? Colors.orange[200]! : Colors.green[200]!,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                event.notificationEnabled == true 
+                                notificationEnabled 
                                   ? Icons.notifications_active 
                                   : Icons.bookmark,
                                 size: 12,
-                                color: Colors.green[700],
+                                color: notificationEnabled ? Colors.orange[700] : Colors.green[700],
                               ),
                               const SizedBox(width: 2),
                               Text(
-                                'Subscribed',
+                                notificationEnabled ? 'Notification On' : 'Subscribed',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: Colors.green[700],
+                                  color: notificationEnabled ? Colors.orange[700] : Colors.green[700],
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -724,7 +476,7 @@ class _EventsPageState extends State<EventsPage>
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: () => _applyCurrentFilter(),
+                onPressed: () => _presenter.loadUpcomingEvents(),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Try Again'),
                 style: ElevatedButton.styleFrom(
@@ -784,7 +536,7 @@ class _EventsPageState extends State<EventsPage>
 
     return RefreshIndicator(
       onRefresh: () async {
-        _applyCurrentFilter();
+        _presenter.loadUpcomingEvents();
       },
       child: ListView.builder(
         controller: _scrollController,
@@ -799,20 +551,7 @@ class _EventsPageState extends State<EventsPage>
   }
 
   String _getEmptyStateMessage() {
-    switch (_selectedFilter) {
-      case 'today':
-        return 'No events scheduled for today\nCheck upcoming events or create a new one!';
-      case 'week':
-        return 'No events this week\nPlan something exciting!';
-      case 'subscribed':
-        return 'You haven\'t subscribed to any events yet\nBrowse events and subscribe to get notified!';
-      case 'notifications':
-        return 'No events with notifications enabled\nSubscribe to events and turn on notifications!';
-      case 'type':
-        return 'No ${_selectedEventType?.displayName.toLowerCase()} events found\nTry a different event type!';
-      default:
-        return 'No events available\nBe the first to create one!';
-    }
+    return 'No events available\nBe the first to create one!';
   }
 
   @override
@@ -827,7 +566,6 @@ class _EventsPageState extends State<EventsPage>
             child: Column(
               children: [
                 _buildHeader(),
-                _buildFilterBar(),
                 Expanded(child: _buildContent()),
               ],
             ),

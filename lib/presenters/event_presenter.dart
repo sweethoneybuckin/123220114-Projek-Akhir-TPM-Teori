@@ -392,13 +392,6 @@ class EventPresenter {
       _detailView?.showError(_getErrorMessage(e));
     }
   }
-
-  // Unsubscribe from event with notification handling
-  
-
-  // Toggle notification for subscribed event
-  
-
   // Load user's subscribed events
   Future<void> loadUserSubscribedEvents() async {
     if (_currentUserId == null) {
