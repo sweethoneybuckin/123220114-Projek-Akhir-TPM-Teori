@@ -215,10 +215,10 @@ class _VinylHomePageState extends State<VinylHomePage>
                     showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
-                        title: const Text('Saran dan Kesan'),
+                        title: const Text('123220114'),
                         content: const SingleChildScrollView(
                           child: Text(
-                            'Selama mengikuti mata kuliah Pemrograman Mobile, saya mendapatkan banyak pengalaman baru dalam memahami cara kerja pengembangan aplikasi di platform mobile secara lebih mendalam. Mata kuliah ini memberikan gambaran yang nyata tentang tantangan yang dihadapi developer mobile.',
+                            'Alvino Abyan Rizaldi - 123220114 - Selama mengikuti mata kuliah Pemrograman Mobile, saya mendapatkan banyak pengalaman baru dalam memahami cara kerja pengembangan aplikasi di platform mobile secara lebih mendalam. Mata kuliah ini memberikan gambaran yang nyata tentang tantangan yang dihadapi developer mobile.',
                             style: TextStyle(fontSize: 14),
                           ),
                         ),
