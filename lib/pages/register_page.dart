@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../database/database_helper.dart'; // Add this import
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -67,65 +66,6 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
-  }
-
-  // Clear database function for debugging
-  Future<void> clearDatabase() async {
-    try {
-      final databaseHelper = DatabaseHelper();
-      await databaseHelper.deleteDatabase();
-      print('Database cleared');
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Database cleared successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      print('Error clearing database: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error clearing database: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  // Test database connection
-  Future<void> testDatabase() async {
-    try {
-      final databaseHelper = DatabaseHelper();
-      final db = await databaseHelper.database;
-      print('Database test successful: $db');
-      
-      final userCount = await databaseHelper.getUserCount();
-      print('Current user count: $userCount');
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Database OK. Users: $userCount'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      print('Database test failed: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Database error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
   Future<void> _register() async {
@@ -256,35 +196,7 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Back Button
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: IconButton(
-                                onPressed: () => Navigator.of(context).pop(),
-                                icon: const Icon(Icons.arrow_back_ios),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: Colors.grey[100],
-                                  padding: const EdgeInsets.all(12),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-
                             // Logo and Title
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.person_add,
-                                size: 48,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            
                             Text(
                               'Create Account',
                               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -292,45 +204,7 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
                                 color: Theme.of(context).colorScheme.primary,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            
-                            Text(
-                              'Join the vinyl community!',
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Colors.grey[600],
-                              ),
-                            ),
                             const SizedBox(height: 32),
-
-                            // Debug Buttons (Remove these in production)
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: testDatabase,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 8),
-                                    ),
-                                    child: const Text('Test DB', style: TextStyle(fontSize: 12)),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: clearDatabase,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.orange,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 8),
-                                    ),
-                                    child: const Text('Clear DB', style: TextStyle(fontSize: 12)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
 
                             // Error Message
                             if (_errorMessage != null) ...[
@@ -486,44 +360,6 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
                               textInputAction: TextInputAction.done,
                               onFieldSubmitted: (_) => _register(),
                               validator: _validateConfirmPassword,
-                            ),
-                            const SizedBox(height: 32),
-
-                            // Password Requirements
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.blue[50],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.blue[200]!),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.info_outline, color: Colors.blue[700], size: 16),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Password Requirements:',
-                                        style: TextStyle(
-                                          color: Colors.blue[700],
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    '• At least 6 characters long\n• Contains at least one letter\n• Contains at least one number',
-                                    style: TextStyle(
-                                      color: Colors.blue[600],
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ),
                             const SizedBox(height: 32),
 
