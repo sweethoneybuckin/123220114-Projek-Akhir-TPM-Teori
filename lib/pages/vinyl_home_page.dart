@@ -209,17 +209,26 @@ class _VinylHomePageState extends State<VinylHomePage>
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
                   leading: const Icon(Icons.info_outline),
-                  title: const Text('About'),
+                  title: const Text('Saran dan Kesan'),
                   onTap: () {
                     Navigator.pop(context);
-                    showAboutDialog(
+                    showDialog(
                       context: context,
-                      applicationName: 'Vinyl Store',
-                      applicationVersion: '1.0.0',
-                      applicationIcon: const Icon(Icons.album),
-                      children: [
-                        const Text('A beautiful vinyl record store app with authentication, profile management, event scheduling, and shake-to-favorite functionality.'),
-                      ],
+                      builder: (context) => AlertDialog(
+                        title: const Text('Saran dan Kesan'),
+                        content: const SingleChildScrollView(
+                          child: Text(
+                            'Selama mengikuti mata kuliah Pemrograman Mobile, saya mendapatkan banyak pengalaman baru dalam memahami cara kerja pengembangan aplikasi di platform mobile secara lebih mendalam. Mata kuliah ini memberikan gambaran yang nyata tentang tantangan yang dihadapi developer mobile.',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
                     );
                   },
                 ),
